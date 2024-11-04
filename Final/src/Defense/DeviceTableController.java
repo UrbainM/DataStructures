@@ -25,10 +25,6 @@ public class DeviceTableController {
 	public void setupDeviceTable() {
 		ObservableList<Device> devices = FXCollections.observableArrayList();
 		
-		devices.add(new Device("CPU", "CPU", "OK", "Normal", getCpuDetails()));
-		devices.add(new Device("RAM", "Memory", "OK", "Normal", getRamDetails()));
-		devices.add(new Device("DISK", "Disk Drive", "OK", "Normal", getDiskDetails()));
-		
 		try { //https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/net/NetworkInterface.html
 			Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
 			while (networkInterfaces.hasMoreElements()) {
@@ -38,8 +34,7 @@ public class DeviceTableController {
 					String displayName = networkInterface.getDisplayName();
 					String ipAddress = getIpAddress(networkInterface);
 					
-					devices.add(new Device(deviceId, displayName, "OK", "Normal",
-							"IP: " + ipAddress));
+					devices.add(new Device(deviceId, displayName, ipAddress, null));							
 				}
 			}
 		} catch (SocketException e) {

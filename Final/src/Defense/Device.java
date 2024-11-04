@@ -127,10 +127,10 @@ public class Device {
     	}
     }
     
-    private void generateThreat(String paramName, double value, ThreatSeverity severity) {
+    private void generateThreat(String paramName, double value, Threat.ThreatSeverity severity) {
     	Threat threat = new Threat(
     		UUID.randomUUID().toString(),
-    		getId(),
+    		getDeviceId(),
     		Threat.ThreatType.UNUSUAL_BEHAVIOR,
     		severity);
     	
@@ -142,7 +142,7 @@ public class Device {
     }
     
     private void updateDeviceStatus() {
-        List<Threat> activeThreats = threatManager.getActiveThreatsForDevice(getId());
+        List<Threat> activeThreats = threatManager.getActiveThreatsForDevice(getDeviceId());
         
         boolean hasCritical = activeThreats.stream()
             .anyMatch(t -> t.getSeverity() == Threat.ThreatSeverity.CRITICAL);
