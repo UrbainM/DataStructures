@@ -6,17 +6,24 @@ import javafx.scene.control.TableView;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import oshi.SystemInfo; // https://github.com/openhab/openhab-addons/tree/main/bundles/org.openhab.binding.systeminfo
+import oshi.hardware.HardwareAbstractionLayer;
 import oshi.hardware.CentralProcessor; 
 import oshi.hardware.CentralProcessor.ProcessorIdentifier;
 import oshi.hardware.GlobalMemory;
 import oshi.hardware.HWDiskStore;
 
-public class DeviceTableController {
+class DeviceTableController {
 	
+	private static final Logger LOGGER = Logger.getLogger(DeviceTableController.class.getName());
 	private final TableView<Device> deviceTable;
+	private final ThreatManager threatManager = new ThreatManager();
+	private final HardwareAbstractionLayer hal = new SystemInfo().getHardware();
 	
 	public DeviceTableController(TableView<Device> deviceTable) {
 		this.deviceTable = deviceTable;
@@ -34,43 +41,46 @@ public class DeviceTableController {
 					String displayName = networkInterface.getDisplayName();
 					String ipAddress = getIpAddress(networkInterface);
 					
-					devices.add(new Device(deviceId, displayName, ipAddress, null));							
+					devices.add(new Device(deviceId, displayName, ipAddress, threatManager));							
 				}
 			}
 		} catch (SocketException e) {
-			e.printStackTrace();
+			LOGGER.log(Level.SEVERE, "Failed to get network interfaces", e);
 		}
-		
+		try {
+            addHardwareDetails(devices); 
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error retrieving hardware details", e);
+        }
 		deviceTable.setItems(devices);
 	}
 	
-	private String getCpuDetails() {
-		SystemInfo systemInfo = new SystemInfo();
-		CentralProcessor processor = systemInfo.getHardware().getProcessor();
-		ProcessorIdentifier id = processor.getProcessorIdentifier();
-		
-		String cpuDetails = id.toString() + processor.toString();
-		
-		return cpuDetails;
+	private void addHardwareDetails(ObservableList<Device> devices) { 
+        devices.add(new Device(getCpuDetails(), "CPU", "N/A", threatManager)); 
+        devices.add(new Device(getRamDetails(), "RAM", "N/A", threatManager)); 
+        devices.add(new Device(getDiskDetails(), "Disk Storage", "N/A", threatManager)); 
+    }
+	
+	public List<Device> getDevices() {
+		ObservableList<Device> devices = deviceTable.getItems();
+		return new ArrayList<>(devices);
 	}
+	
+	public Device getSelectedDevice() {
+        return deviceTable.getSelectionModel().getSelectedItem();
+    }
+	
+	private String getCpuDetails() {
+        return hal.getProcessor().toString(); 
+    }
 	
 	private String getRamDetails() {
-		SystemInfo systemInfo = new SystemInfo();
-		GlobalMemory memory = systemInfo.getHardware().getMemory();
-		
-		String ramDetails = memory.toString();
-		
-		return ramDetails;
-	}
+        return hal.getMemory().getPhysicalMemory().toString(); 
+    }
 	
 	private String getDiskDetails() {
-		SystemInfo systemInfo = new SystemInfo();
-		List<HWDiskStore> diskStores = systemInfo.getHardware().getDiskStores();
-		
-		String diskDetails = diskStores.toString();
-		
-		return diskDetails;
-	}
+        return hal.getDiskStores().toString(); 
+    }
 	
 	private String getIpAddress(NetworkInterface networkInterface) {
 		Enumeration<InetAddress> inetAddresses = networkInterface.getInetAddresses();

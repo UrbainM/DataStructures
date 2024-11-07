@@ -27,6 +27,7 @@ public class ThreatManager {
     }
 
     public ThreatManager() {
+    	System.out.println("ThreatManager constructor");
         this.activeThreatQueue = new PriorityQueue<>();
         this.threatHistory = FXCollections.observableArrayList();
         this.deviceThreats = new HashMap<>();
