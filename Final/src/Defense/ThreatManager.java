@@ -9,29 +9,42 @@ import java.util.stream.Collectors;
 
 import Defense.Threat.ThreatSeverity;
 import Defense.Threat.ThreatType;
-import Defense.ThreatManager.ThreatListener;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ThreatManager {
+	private static final Logger logger = LoggerFactory.getLogger(ThreatManager.class);
     private final PriorityQueue<Threat> activeThreatQueue;
     private final ObservableList<Threat> threatHistory;
     private final Map<String, List<Threat>> deviceThreats;
     private final List<ThreatListener> threatListeners;
+    
 
     public interface ThreatListener {
         void onNewThreat(Threat threat);
         void onThreatResolved(Threat threat);
         void onCriticalThreat(Threat threat);
     }
+    
+    public void addDevice(Device device) {
+        // TODO Add device
+        logger.info("Device added to threat management: {}", device.getDeviceName());
+    }
+    
+    public void removeDevice(Device device) {
+        // TODO Remove device
+        logger.info("Device removed from threat management: {}", device.getDeviceName());
+    }
 
     public ThreatManager() {
-    	System.out.println("ThreatManager constructor");
         this.activeThreatQueue = new PriorityQueue<>();
         this.threatHistory = FXCollections.observableArrayList();
         this.deviceThreats = new HashMap<>();
         this.threatListeners = new ArrayList<>();
+        logger.info("Threat manager initialized.");
     }
 
     public void addThreat(Threat threat) {

@@ -37,10 +37,6 @@
 <?import javafx.scene.chart.NumberAxis?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Menu?>
-<?import javafx.scene.control.MenuBar?>
-<?import javafx.scene.control.MenuItem?>
-<?import javafx.scene.control.SeparatorMenuItem?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
@@ -49,79 +45,40 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Defense.Controller">
+<VBox prefHeight="664.0" prefWidth="1168.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Defense.Controller">
   <children>
-    <MenuBar VBox.vgrow="NEVER">
-      <menus>
-        <Menu mnemonicParsing="false" text="File">
-          <items>
-            <MenuItem mnemonicParsing="false" text="New" />
-            <MenuItem mnemonicParsing="false" text="Open…" />
-            <Menu mnemonicParsing="false" text="Open Recent" />
-            <SeparatorMenuItem mnemonicParsing="false" />
-            <MenuItem mnemonicParsing="false" text="Close" />
-            <MenuItem mnemonicParsing="false" text="Save" />
-            <MenuItem mnemonicParsing="false" text="Save As…" />
-            <MenuItem mnemonicParsing="false" text="Revert" />
-            <SeparatorMenuItem mnemonicParsing="false" />
-            <MenuItem mnemonicParsing="false" text="Preferences…" />
-            <SeparatorMenuItem mnemonicParsing="false" />
-            <MenuItem mnemonicParsing="false" text="Quit" />
-          </items>
-        </Menu>
-        <Menu mnemonicParsing="false" text="Edit">
-          <items>
-            <MenuItem mnemonicParsing="false" text="Undo" />
-            <MenuItem mnemonicParsing="false" text="Redo" />
-            <SeparatorMenuItem mnemonicParsing="false" />
-            <MenuItem mnemonicParsing="false" text="Cut" />
-            <MenuItem mnemonicParsing="false" text="Copy" />
-            <MenuItem mnemonicParsing="false" text="Paste" />
-            <MenuItem mnemonicParsing="false" text="Delete" />
-            <SeparatorMenuItem mnemonicParsing="false" />
-            <MenuItem mnemonicParsing="false" text="Select All" />
-            <MenuItem mnemonicParsing="false" text="Unselect All" />
-          </items>
-        </Menu>
-        <Menu mnemonicParsing="false" onAction="#aboutPage" text="Help">
-          <items>
-            <MenuItem fx:id="about" mnemonicParsing="false" text="About Defense" />
-          </items>
-        </Menu>
-      </menus>
-    </MenuBar>
-      <Label text="Infrastructure Monitoring System">
+      <Label prefWidth="1177.0" text="Infrastructure Monitoring System">
          <font>
             <Font name="System Bold" size="24.0" />
          </font>
       </Label>
-      <SplitPane dividerPositions="0.5">
+      <SplitPane dividerPositions="0.48673469387755103">
         <items>
           <AnchorPane>
                <children>
                   <VBox>
                      <children>
-                        <Label text="Devices">
+                        <Label prefWidth="580.0" text="Devices">
                            <font>
                               <Font size="18.0" />
                            </font>
                         </Label>
-                        <TableView fx:id="deviceTable" editable="true" prefHeight="371.0" tableMenuButtonVisible="true">
+                        <TableView fx:id="deviceTable" prefWidth="580.0">
                           <columns>
                             <TableColumn fx:id="deviceIdColumn" prefWidth="75.0" text="ID" />
                             <TableColumn fx:id="deviceNameColumn" prefWidth="75.0" text="Name" />
                               <TableColumn fx:id="deviceStatusColumn" prefWidth="75.0" text="Status" />
                               <TableColumn fx:id="deviceIpAddressColumn" prefWidth="75.0" text="IP Address" />
-                              <TableColumn fx:id="deviceParametersColumn" prefWidth="75.0" text="Normal" />
-                              <TableColumn fx:id="currentParametersColumn" prefWidth="75.0" text="Current" />
+                              <TableColumn fx:id="deviceParametersColumn" prefWidth="72.0" text="Normal" />
+                              <TableColumn fx:id="currentParametersColumn" prefWidth="100.0" text="Current" />
                           </columns>
                         </TableView>
-                        <Label text="Anomaly Events">
+                        <Label prefWidth="580.0" text="Anomaly Events">
                            <font>
                               <Font size="18.0" />
                            </font>
                         </Label>
-                        <TextArea editable="false" prefHeight="200.0" wrapText="true" />
+                        <TextArea editable="false" prefWidth="580.0" wrapText="true" />
                      </children>
                   </VBox>
                </children>
@@ -130,21 +87,29 @@
                <children>
                   <VBox>
                      <children>
-                        <LineChart fx:id="realTimeChart" prefHeight="400.0" title="Parameter Monitoring">
+                        <Label fx:id="lineChartTitle" alignment="CENTER" contentDisplay="CENTER" prefWidth="580.0" text="Parameters">
+                           <font>
+                              <Font size="18.0" />
+                           </font>
+                        </Label>
+                        <LineChart fx:id="realTimeChart" alternativeColumnFillVisible="true" legendSide="LEFT" prefWidth="580.0" titleSide="BOTTOM">
                           <xAxis>
-                            <CategoryAxis fx:id="timeAxis" label="Time" side="BOTTOM" />
+                            <CategoryAxis fx:id="timeAxis" autoRanging="false" label="Time" tickLabelGap="0.0" tickLabelsVisible="false" tickLength="1.0">
+                                 <tickLabelFont>
+                                    <Font size="18.0" />
+                                 </tickLabelFont></CategoryAxis>
                           </xAxis>
                           <yAxis>
                             <NumberAxis fx:id="parameterAxis" side="LEFT" />
                           </yAxis>
                         </LineChart>
                         <Button fx:id="captureParameterButton" mnemonicParsing="false" onAction="#handleStartMonitoring" text="Capture Parameters" />
-                        <Label text="Threat Priority Queue">
+                        <Label prefWidth="580.0" text="Threat Priority Queue">
                            <font>
                               <Font size="18.0" />
                            </font>
                         </Label>
-                        <TableView fx:id="priorityQueueTable" prefHeight="197.0">
+                        <TableView fx:id="priorityQueueTable" prefHeight="157.0" prefWidth="580.0">
                           <columns>
                             <TableColumn prefWidth="75.0" text="Threat Id" />
                             <TableColumn prefWidth="75.0" text="Device ID" />
