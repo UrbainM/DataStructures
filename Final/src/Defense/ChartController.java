@@ -18,14 +18,21 @@ public class ChartController {
 
     public ChartController(LineChart<String, Number> realTimeChart) {
         this.realTimeChart = realTimeChart;
-        this.realTimeChart.getXAxis().setLabel("Time");
-        this.realTimeChart.getYAxis().setLabel("Value");
+        this.realTimeChart.getYAxis().setAutoRanging(true);
     }
 
     public void updateRealTimeChart(Device device) {
         Platform.runLater(() -> {
+        	Map<String, Number> metrics = device.getCurrentParameters().getParameters();
+        	logger.debug("uRTC Device '{}' parameters: {}", device.getDeviceName(), metrics);
+        	
+        	if (metrics == null || metrics.isEmpty()) {
+                logger.warn("No metrics available for device: {}", device.getDeviceName());
+                return;
+            }
+        	
         	XYChart.Series<String, Number> series = realTimeChart.getData().stream()
-                    .filter(s -> s.getName().equals(device.getDeviceName()))
+                    .filter(s -> device.getDeviceName() != null && device.getDeviceName().equals(s.getName()))
                     .findFirst()
                     .orElseGet(() -> {
                         XYChart.Series<String, Number> newSeries = new XYChart.Series<>();
@@ -33,26 +40,20 @@ public class ChartController {
                         realTimeChart.getData().add(newSeries);
                         return newSeries;
                     });
-
-            Map<String, Double> metrics = device.getMetrics();
-            if (metrics == null || metrics.isEmpty()) {
-                logger.warn("No metrics available for device: {}", device.getDeviceName());
-                return;
-            }
             
             String currentTime = getCurrentTime();
-            Double currentValue = metrics.values().stream().reduce((first, second) -> second).orElse(null);
+            Number currentValue = metrics.values().stream().reduce((first, second) -> second).orElse(null);
             String metricName = metrics.keySet().stream().findFirst().orElse("Metric");
 
             if (currentValue != null) {
                 series.getData().add(new XYChart.Data<>(currentTime, currentValue));
-                realTimeChart.setTitle(metricName);
-                logger.debug("Real-time chart updated for device: {}", device.getDeviceName());
+                realTimeChart.getXAxis().setLabel(metricName);
+                logger.debug("Real-time chart updated for device: {}, metric: {}, value: {}", device.getDeviceName(), metricName, currentValue);
             } else {
                 logger.debug("No metrics found for device: {}", device.getDeviceName());
             }
 
-            if (series.getData().size() > 60) {
+            if (series.getData().size() > 60) {  // https://www.youtube.com/watch?v=FeDBcKbO29M
                 series.getData().remove(0);
             }
         });

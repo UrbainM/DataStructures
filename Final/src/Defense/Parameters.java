@@ -29,6 +29,7 @@ public class Parameters {
     private static final Logger logger = LoggerFactory.getLogger(Parameters.class);
 	
 	public Parameters() {
+		
 	}
 	
 	public double getCpuUsage() { return cpuUsage.get(); }
@@ -58,24 +59,19 @@ public class Parameters {
 	public int getProcessCount() { return processCount.get(); }
 	public void setProcessCount(int processCount) { this.processCount.set(processCount); }
 	public IntegerProperty processCountProperty() { return processCount; }
-	
-	private void startCaptures() {
-		executor.scheduleAtFixedRate(this::captureCpuParameters, 0, 300, TimeUnit.MILLISECONDS);
-        executor.scheduleAtFixedRate(this::captureMemoryParameters, 0, 500, TimeUnit.MILLISECONDS);
-        executor.scheduleAtFixedRate(this::captureDiskParameters, 0, 2, TimeUnit.SECONDS);
-        executor.scheduleAtFixedRate(this::captureNetworkParameters, 0, 1, TimeUnit.SECONDS);
-        executor.scheduleAtFixedRate(this::captureUsbParameters, 0, 5, TimeUnit.SECONDS);
-        executor.scheduleAtFixedRate(this::captureProcessParameters, 0, 1, TimeUnit.SECONDS);
-	}
-	
+		
 	public void captureCpuParameters() {
         executor.submit(() -> {
-            CentralProcessor processor = hal.getProcessor();
+           try { CentralProcessor processor = hal.getProcessor();
             double cpuLoad = processor.getSystemCpuLoad(250);
             setCpuUsage(cpuLoad);
             logger.debug("cpuLoad = {}", cpuLoad);
+           } catch (Exception e) {
+        	logger.error("Failed to capture CPU parameters: {}", e.getMessage(), e);
+           }
         });
-    }
+	}
+    
 	
 	public void captureMemoryParameters() {
         executor.submit(() -> {
@@ -158,7 +154,7 @@ public class Parameters {
         });
     }
 	
-	public Map<String, Number> getParameters() {
+	public synchronized Map<String, Number> getParameters() {
         Map<String, Number> parameters = new HashMap<>();
         if (getCpuUsage() > 0) parameters.put("CPU Usage", getCpuUsage());
         if (getMemoryUsage() > 0) parameters.put("Memory Usage", getMemoryUsage());

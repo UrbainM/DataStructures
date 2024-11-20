@@ -86,16 +86,17 @@ class DeviceTableController {
     }
 	
 	private String getCpuDetails() {
-		return hal.getProcessor().getProcessorIdentifier().getName();
+		return hal.getProcessor().getClass().descriptorString();
     }
 	
 	private String getRamDetails() {
 		long availableMemory = hal.getMemory().getAvailable();
-        return availableMemory / (1024 * 1024) + " MB";
+		String memoryName = hal.getMemory().getClass().descriptorString();
+        return availableMemory / (1024 * 1024) + " MB" + " - " + memoryName;
     }
 	
 	private String getDiskDetails() {
-        return hal.getDiskStores().get(0).getName() + " - " + hal.getDiskStores().get(0).getSize() / (1024 * 1024 * 1024) + " GB"; // Example disk detail
+        return hal.getDiskStores().get(0).getName() + " - " + hal.getDiskStores().get(0).getSize() / (1024 * 1024 * 1024) + " GB";
     }
 	
 	private String getIpAddress(NetworkInterface networkInterface) {

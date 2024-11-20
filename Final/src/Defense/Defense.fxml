@@ -45,7 +45,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox prefHeight="664.0" prefWidth="1168.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Defense.Controller">
+<VBox prefHeight="664.0" prefWidth="1168.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml" fx:controller="Defense.Controller">
   <children>
       <Label prefWidth="1177.0" text="Infrastructure Monitoring System">
          <font>
@@ -92,7 +92,7 @@
                               <Font size="18.0" />
                            </font>
                         </Label>
-                        <LineChart fx:id="realTimeChart" alternativeColumnFillVisible="true" legendSide="LEFT" prefWidth="580.0" titleSide="BOTTOM">
+                        <LineChart fx:id="realTimeChart" xmlns:fx="http://javafx.com/fxml" xmlns="http://javafx.com/javafx/8" title="Real-Time Chart">
                           <xAxis>
                             <CategoryAxis fx:id="timeAxis" autoRanging="false" label="Time" tickLabelGap="0.0" tickLabelsVisible="false" tickLength="1.0">
                                  <tickLabelFont>
