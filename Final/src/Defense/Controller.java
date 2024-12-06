@@ -21,37 +21,37 @@ import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Controller {
+public class Controller {  // This is the main Controller for the application, all other controllers are run through this
 
 	private static final Logger logger = LoggerFactory.getLogger(Controller.class);	
 	@FXML private Label lineChartTitle;
 	@FXML private Button captureParameterButton;
 	@FXML private Button resetButton;
-    @FXML private TableView<Device> deviceTable;
-    @FXML private TableView<Threat> priorityQueueTable;
-    @FXML private DeviceTableController deviceTableController;
-    @FXML private ThreatTableController threatTableController;
-    @FXML private TableColumn<Device, String> deviceIdColumn;
-    @FXML private TableColumn<Device, String> deviceNameColumn;
-    @FXML private TableColumn<Device, String> deviceStatusColumn;
-    @FXML private TableColumn<Device, String> deviceParametersColumn;
-    @FXML private TableColumn<Device, String> currentParametersColumn;
-    @FXML private TableColumn<Device, String> deviceIpAddressColumn;    
-    @FXML private LineChart<String,Number> realTimeChart;
-    @FXML private CategoryAxis timeAxis;
-    @FXML private NumberAxis parameterAxis;
+    	@FXML private TableView<Device> deviceTable;
+    	@FXML private TableView<Threat> priorityQueueTable;
+   	@FXML private DeviceTableController deviceTableController;
+    	@FXML private ThreatTableController threatTableController;
+    	@FXML private TableColumn<Device, String> deviceIdColumn;
+    	@FXML private TableColumn<Device, String> deviceNameColumn;
+    	@FXML private TableColumn<Device, String> deviceStatusColumn;
+    	@FXML private TableColumn<Device, String> deviceParametersColumn;
+    	@FXML private TableColumn<Device, String> currentParametersColumn;
+    	@FXML private TableColumn<Device, String> deviceIpAddressColumn;    
+    	@FXML private LineChart<String,Number> realTimeChart;
+    	@FXML private CategoryAxis timeAxis;
+    	@FXML private NumberAxis parameterAxis;
     
-    private ChartController chartController;
-    private Timeline timeline;
-    private ObservableList<Device> devices = FXCollections.observableArrayList();
-    private ThreatManager threatManager;
-    private ExecutorService executorService;
+    	private ChartController chartController;
+    	private Timeline timeline;
+    	private ObservableList<Device> devices = FXCollections.observableArrayList();
+    	private ThreatManager threatManager;
+    	private ExecutorService executorService;
     
     @FXML
     public void initialize() {
     	executorService = Executors.newFixedThreadPool(10);
     	
-    	deviceIdColumn.setCellValueFactory(new PropertyValueFactory<>("deviceId"));
+    	deviceIdColumn.setCellValueFactory(new PropertyValueFactory<>("deviceId"));   // This should be moved to within DeviceTableController or at least into a method
     	deviceNameColumn.setCellValueFactory(new PropertyValueFactory<>("deviceName"));
         deviceStatusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
         deviceIpAddressColumn.setCellValueFactory(new PropertyValueFactory<>("ipAddress"));
@@ -64,7 +64,7 @@ public class Controller {
         chartController = new ChartController(realTimeChart);
         threatManager = new ThreatManager();
         setupPriorityQueueTable();
-        threatManager.addThreatListener(new ThreatManager.ThreatListener() {
+        threatManager.addThreatListener(new ThreatManager.ThreatListener() {  // The threat manager is the main purpose of the program.
         	@Override
         	public void onNewThreat(Threat threat) {
         		threatManager.addThreat(threat);
@@ -82,7 +82,7 @@ public class Controller {
                 updatePriorityQueueTable();
             }
         });
-        deviceTable.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+        deviceTable.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {  // Listens for new selections on the device table
             if (newValue != null) {
                 chartController.updateRealTimeChart(newValue);
                 logger.info("Selected device changed to: {}", newValue.getDeviceName());
@@ -91,7 +91,7 @@ public class Controller {
         });              
     }	
     
-    private void startRealTimeChartUpdater() {
+    private void startRealTimeChartUpdater() {      // This is the main timeline.  It has more responsibilities than intended.  Refresh rate can be changed easily here.
     	logger.info("Starting real-time chart updater...");
     	if (timeline != null) {
             timeline.stop();
