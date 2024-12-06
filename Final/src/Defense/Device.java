@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 
 public class Device {
 	
-	private final StringProperty deviceId = new SimpleStringProperty();
+    private final StringProperty deviceId = new SimpleStringProperty();
     private final StringProperty deviceName = new SimpleStringProperty();
     private final StringProperty ipAddress = new SimpleStringProperty();
     private final ObjectProperty<DeviceStatus> status =  new SimpleObjectProperty<>(DeviceStatus.NORMAL);
@@ -35,7 +35,7 @@ public class Device {
     private static final ExecutorService executor = Executors.newCachedThreadPool();
 
     
-    public enum DeviceStatus {
+    public enum DeviceStatus {    // A way to easily control a device's status
     	NORMAL("Normal", "green"), 
     	WARNING("Warning", "orange"), 
     	CRITICAL("Critical", "red"), 
@@ -52,10 +52,10 @@ public class Device {
         public String getColor() { return color; }
     }
     
-    public enum DeviceType {
+    public enum DeviceType {  // For determining which parameters to capture
         CPU, MEMORY, DISK, NETWORK, USB, PROCESS;
 
-    	public static DeviceType fromDeviceName(String deviceName) {
+    	public static DeviceType fromDeviceName(String deviceName) {  // This determines device type by matching common names for devices
     		String name = deviceName.toLowerCase();
     		if (name.contains("cpu")) return CPU;
     		if (name.contains("memory") || name.contains("ram")) return MEMORY;
@@ -67,7 +67,7 @@ public class Device {
     	}
     }
     
-    private static class ThresholdConfig {
+    private static class ThresholdConfig {  // This holds double values for the normal operating parameter range for devices.
         double warningLevel;
         double criticalLevel;
 
@@ -81,7 +81,7 @@ public class Device {
         }
     }
     
-    public Device(String deviceId, String deviceName, String ipAddress, ThreatManager threatManager) {
+    public Device(String deviceId, String deviceName, String ipAddress, ThreatManager threatManager) {  // The instantiation of a Device object will follow these steps
         this.deviceId.set(deviceId);
         this.deviceName.set(deviceName);
         this.ipAddress.set(ipAddress);
@@ -120,7 +120,7 @@ public class Device {
     public ObservableList<Threat> getThreatHistory() { return threatHistory; }
     public ThreatManager getThreatManager() { return threatManager; }
     
-    private void setupParameterListeners() {
+    private void setupParameterListeners() {  // When a value is changed it will be evaluated by a method communicating with the threatManager directly
     	Parameters current = currentParameters.get();
     	DeviceType deviceType = DeviceType.fromDeviceName(deviceName.get());
         switch (deviceType) {
@@ -138,7 +138,7 @@ public class Device {
         logger.info("Normal parameters set for device: {}", getDeviceName());
     }
     
-    private Parameters captureParameters(DeviceType deviceType) {
+    private Parameters captureParameters(DeviceType deviceType) {   // Determines device type and runs the relevant parameter capture method on it.
         Parameters params = new Parameters();
         switch (deviceType) {
             case CPU -> params.captureCpuParameters();
@@ -166,7 +166,7 @@ public class Device {
         initializeThresholds();
     }
 	
-    public void updateCurrentParameters(Parameters params) {
+    public void updateCurrentParameters(Parameters params) {  // Will only update an already running device
     	if (params == null || params.getParameters().isEmpty()) {
             return;
         }	
@@ -209,7 +209,7 @@ public class Device {
 		});
 	}*/
     
-    private void initializeThresholds() {
+    private void initializeThresholds() {  
         Parameters normalParams = normalParameters.get();
 		if (normalParams == null) {
 			logger.warn("Normal parameters not set for device: {}", getDeviceName());
@@ -230,8 +230,8 @@ public class Device {
             return new ThresholdConfig(0, 0); // Default values
         }
 
-        double warningLevel = baseValue * 3;
-        double criticalLevel = baseValue * 6;
+        double warningLevel = baseValue * 3; // Cranked up from 120% to reduce threats
+        double criticalLevel = baseValue * 6; // 600%
         return new ThresholdConfig(warningLevel, criticalLevel);
     }
     
@@ -245,7 +245,7 @@ public class Device {
             return;
         }
     	
-    	for (String metric : thresholds.keySet()) {
+    	for (String metric : thresholds.keySet()) {   // Measures all thresholds, if all have 0 values device is probably offline
             double currentValue = getMetricValue(current, metric);
             if (currentValue > 0.0) {
             	hasValidMetrics = true;
@@ -260,7 +260,7 @@ public class Device {
     	updateDeviceStatus();
     }
     
-    private double getMetricValue(Parameters current, String metric) {
+    private double getMetricValue(Parameters current, String metric) {  // Metrics are deprecated
         return switch (metric) {
             case "cpuUsage" -> current.getCpuUsage();
             case "memoryUsage" -> current.getMemoryUsage();
@@ -272,7 +272,7 @@ public class Device {
     }
 
     
-    private void evaluateParameter(String paramName, double currentValue) {
+    private void evaluateParameter(String paramName, double currentValue) { // Threat for specific metric
     	ThresholdConfig threshold = thresholds.get(paramName);
     	if (currentValue >= threshold.criticalLevel) {
     		generateThreat(paramName, currentValue, Threat.ThreatSeverity.CRITICAL);
@@ -281,7 +281,7 @@ public class Device {
     	}   
     }
     
-    private void generateThreat(String paramName, double value, Threat.ThreatSeverity severity) {
+    private void generateThreat(String paramName, double value, Threat.ThreatSeverity severity) { // Threat generator
     	Threat threat = new Threat(
     		UUID.randomUUID().toString(),
     		getDeviceId(),
@@ -316,13 +316,13 @@ public class Device {
         thresholds.put(paramName, new ThresholdConfig(warningLevel, criticalLevel));
     }
     
-    public void setBaselineParameters(Parameters params) {
+    public void setBaselineParameters(Parameters params) { // Unused
         setNormalParameters(params);
         logger.debug("Baseline parameters set for device: {}", getDeviceName());
         evaluateAllParameters();
     }
     
-    public boolean isAnomalous() {
+    public boolean isAnomalous() { // Unused
         // TODO Add logic to compare current and normal parameters
         return !currentParameters.get().equals(normalParameters.get());
     }
