@@ -36,7 +36,7 @@ public class Parameters {
 	
 	public Parameters(Device device) {
 		this.device = device;
-		captureParameters();
+		captureParameters();  // Immediately populates so other methods depending on non-zeros work
     }
 	
 	public double getCpuUsage() { return cpuUsage.get(); }
@@ -101,11 +101,11 @@ public class Parameters {
 	public void captureMemoryParameters() {
         executor.submit(() -> {
             GlobalMemory memory = hal.getMemory();
-            setMemoryUsage(1.0 - ((double) memory.getAvailable() / (double) memory.getTotal()));
+            setMemoryUsage(1.0 - ((double) memory.getAvailable() / (double) memory.getTotal())); // Uses percentage of free memory, could just use in-use memory
         });
     }
 	
-	public void captureDiskParameters() {
+	public void captureDiskParameters() {  // Captures hard-drive space for all hard-drives, if something is installed should generate Threat
 	    executor.submit(() -> {
 	        try {
 	            List<HWDiskStore> disks = hal.getDiskStores();
@@ -153,7 +153,7 @@ public class Parameters {
 	        executor.shutdownNow();
 	    }
 	} */
-	public void captureNetworkParameters() {
+	public void captureNetworkParameters() {  // Ok, this one is measuring the difference in overall network activity over 400ms for all network devices whether offline-or-not
         executor.submit(() -> {
             List<NetworkIF> networks = hal.getNetworkIFs().stream().filter(network -> network.getBytesRecv() > 0 || network.getBytesSent() > 0).toList();
 			double totalTraffic = 0;
@@ -182,7 +182,7 @@ public class Parameters {
         });
     }
 	
-	public void captureUsbParameters() {
+	public void captureUsbParameters() {  // Not sure if this works, haven't plugged in a usb device
         executor.submit(() -> {
             List<UsbDevice> usbDevices = hal.getUsbDevices(true);
             setUsbDeviceCount(usbDevices.size());
@@ -190,7 +190,7 @@ public class Parameters {
         });
     }
 	
-	public void captureProcessParameters() {
+	public void captureProcessParameters() { // Number of processes the Operating System has running, the threshold for this should be easier to set independently
         executor.submit(() -> {
             OperatingSystem os = systemInfo.getOperatingSystem();
             setProcessCount(os.getProcessCount());
@@ -198,7 +198,7 @@ public class Parameters {
         });
     }
 	
-	public synchronized Map<String, Number> getParameters() {
+	public synchronized Map<String, Number> getParameters() {    // getParameters returns a Map of non-zero parameters
 		parameters.clear();
 		if (this.device != null) { captureParameters(); }
         if (getCpuUsage() > 0.0001) parameters.put("CPU Usage", getCpuUsage());
@@ -220,7 +220,7 @@ public class Parameters {
     }
 	
 
-    public void evaluateParameters() {
+    public void evaluateParameters() {  // evaluates all parameters for a device, not just non-zero
         Map<String, Number> parameters = getParameters();
         parameters.forEach((key, value) -> {
             switch (key) {
