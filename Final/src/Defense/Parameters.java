@@ -6,22 +6,24 @@ import oshi.hardware.*;
 import oshi.software.os.OperatingSystem;
 import java.util.concurrent.*;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Parameters {
-	private final DoubleProperty cpuUsage = new SimpleDoubleProperty();
-	private final DoubleProperty memoryUsage = new SimpleDoubleProperty();
-	private final DoubleProperty diskUsage = new SimpleDoubleProperty();
-	private final DoubleProperty networkTraffic = new SimpleDoubleProperty();
-	private final IntegerProperty usbDeviceCount = new SimpleIntegerProperty();
-	private final IntegerProperty processCount = new SimpleIntegerProperty();
-	private final IntegerProperty threadCount = new SimpleIntegerProperty();
-	private final IntegerProperty openPortCount = new SimpleIntegerProperty();
-	private final IntegerProperty listeningPortCount = new SimpleIntegerProperty();
-	private final IntegerProperty establishedConnectionCount = new SimpleIntegerProperty();
+	private final Device device;
+	private DoubleProperty cpuUsage = new SimpleDoubleProperty();
+	private DoubleProperty memoryUsage = new SimpleDoubleProperty();
+	private DoubleProperty diskUsage = new SimpleDoubleProperty();
+	private DoubleProperty networkTraffic = new SimpleDoubleProperty();
+	private IntegerProperty usbDeviceCount = new SimpleIntegerProperty();
+	private IntegerProperty processCount = new SimpleIntegerProperty();
+	private IntegerProperty threadCount = new SimpleIntegerProperty();
+	private IntegerProperty openPortCount = new SimpleIntegerProperty();
+	private IntegerProperty listeningPortCount = new SimpleIntegerProperty();
+	private IntegerProperty establishedConnectionCount = new SimpleIntegerProperty();
+	private final Map<String, Number> parameters = new HashMap<>();
 	private final SystemInfo systemInfo = new SystemInfo();
 	private final HardwareAbstractionLayer hal = systemInfo.getHardware();
 	private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(
@@ -29,11 +31,16 @@ public class Parameters {
     private static final Logger logger = LoggerFactory.getLogger(Parameters.class);
 	
 	public Parameters() {
-		
+		this.device = null; // won't initiate as captures require a non-zero value
 	}
 	
+	public Parameters(Device device) {
+		this.device = device;
+		captureParameters();
+    }
+	
 	public double getCpuUsage() { return cpuUsage.get(); }
-	public void setCpuUsage(double cpuUsage) { this.cpuUsage.set(cpuUsage); }
+	public void setCpuUsage(double cpuUsage) { this.cpuUsage.set(cpuUsage); logger.debug("cpuUsage = {}", cpuUsage); }
 	public DoubleProperty cpuUsageProperty() { return cpuUsage; }
 	
 	public int getThreadCount() { return threadCount.get(); }
@@ -59,15 +66,33 @@ public class Parameters {
 	public int getProcessCount() { return processCount.get(); }
 	public void setProcessCount(int processCount) { this.processCount.set(processCount); }
 	public IntegerProperty processCountProperty() { return processCount; }
-		
+	
+	private void captureParameters() {
+	    Device.DeviceType deviceType = Device.DeviceType.fromDeviceName(device.getDeviceName());
+	    switch (deviceType) {
+	        case CPU -> captureCpuParameters();
+	        case MEMORY -> captureMemoryParameters();
+	        case DISK -> captureDiskParameters();
+	        case NETWORK -> {
+	            if (!"N/A".equals(device.getipAddress())) {
+	                captureNetworkParameters();
+	            } else {
+	                device.setStatus(Device.DeviceStatus.OFFLINE);
+	            }
+	        }
+	        case USB -> captureUsbParameters();
+	        default -> captureProcessParameters();
+	    }
+	}
+	
 	public void captureCpuParameters() {
         executor.submit(() -> {
-           try { CentralProcessor processor = hal.getProcessor();
-            double cpuLoad = processor.getSystemCpuLoad(250);
-            setCpuUsage(cpuLoad);
-            logger.debug("cpuLoad = {}", cpuLoad);
+           try { 
+        	   CentralProcessor processor = hal.getProcessor();
+        	   double cpuLoad = processor.getSystemCpuLoad(400);
+        	   setCpuUsage(cpuLoad);
            } catch (Exception e) {
-        	logger.error("Failed to capture CPU parameters: {}", e.getMessage(), e);
+        	   logger.error("Failed to capture CPU parameters: {}", e.getMessage(), e);
            }
         });
 	}
@@ -77,7 +102,6 @@ public class Parameters {
         executor.submit(() -> {
             GlobalMemory memory = hal.getMemory();
             setMemoryUsage(1.0 - ((double) memory.getAvailable() / (double) memory.getTotal()));
-            logger.debug("memoryUsage = {}", memoryUsage);
         });
     }
 	
@@ -131,10 +155,30 @@ public class Parameters {
 	} */
 	public void captureNetworkParameters() {
         executor.submit(() -> {
-            List<NetworkIF> networks = hal.getNetworkIFs();
-            double totalTraffic = networks.stream().mapToDouble(network -> (double) (network.getBytesRecv() + network.getBytesSent())).sum();
-            setNetworkTraffic(totalTraffic);
-            logger.debug("networkTraffic = {}", totalTraffic);
+            List<NetworkIF> networks = hal.getNetworkIFs().stream().filter(network -> network.getBytesRecv() > 0 || network.getBytesSent() > 0).toList();
+			double totalTraffic = 0;
+			
+			for (NetworkIF network : networks) {
+                long initialBytesRecv = network.getBytesRecv();
+                long initialBytesSent = network.getBytesSent();
+
+                try {
+					Thread.sleep(400);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+                
+                network.updateAttributes();
+                long finalBytesRecv = network.getBytesRecv();
+                long finalBytesSent = network.getBytesSent();
+
+                double downloadSpeed = (finalBytesRecv - initialBytesRecv) / 1024.0; // KB/s
+                double uploadSpeed = (finalBytesSent - initialBytesSent) / 1024.0; // KB/s
+
+                totalTraffic += downloadSpeed + uploadSpeed;
+            }
+			
+			setNetworkTraffic(totalTraffic);
         });
     }
 	
@@ -155,24 +199,30 @@ public class Parameters {
     }
 	
 	public synchronized Map<String, Number> getParameters() {
-        Map<String, Number> parameters = new HashMap<>();
-        if (getCpuUsage() > 0) parameters.put("CPU Usage", getCpuUsage());
-        if (getMemoryUsage() > 0) parameters.put("Memory Usage", getMemoryUsage());
-        if (getDiskUsage() > 0) parameters.put("Disk Usage", getDiskUsage());
-        if (getNetworkTraffic() > 0) parameters.put("Network Traffic", getNetworkTraffic());
+		parameters.clear();
+		if (this.device != null) { captureParameters(); }
+        if (getCpuUsage() > 0.0001) parameters.put("CPU Usage", getCpuUsage());
+        if (getMemoryUsage() > 0.0001) parameters.put("Memory Usage", getMemoryUsage());
+        if (getDiskUsage() > 0.0001) parameters.put("Disk Usage", getDiskUsage());
+        if (getNetworkTraffic() > 0.0001) parameters.put("Network Traffic", getNetworkTraffic());
         if (getUsbDeviceCount() > 0) parameters.put("USB Device Count", getUsbDeviceCount());
         if (getProcessCount() > 0) parameters.put("Process Count", getProcessCount());
         if (getThreadCount() > 0) parameters.put("Thread Count", getThreadCount());
         if (getOpenPortCount() > 0) parameters.put("Open Port Count", getOpenPortCount());
         if (getListeningPortCount() > 0) parameters.put("Listening Port Count", getListeningPortCount());
         if (getEstablishedConnectionCount() > 0) parameters.put("Established Connection Count", getEstablishedConnectionCount());
+        /*if (!parameters.isEmpty()) {
+        	logger.info("Parameters: {}", parameters);
+        } else {
+        	logger.debug("No relevant parameters to log.");
+        } */
         return parameters;
     }
+	
 
     public void evaluateParameters() {
         Map<String, Number> parameters = getParameters();
         parameters.forEach((key, value) -> {
-            // Update current parameters based on the key and value
             switch (key) {
                 case "CPU Usage":
                     setCpuUsage((Double) value);

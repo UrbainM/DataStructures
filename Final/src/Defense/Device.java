@@ -6,18 +6,14 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,8 +24,8 @@ public class Device {
     private final StringProperty ipAddress = new SimpleStringProperty();
     private final ObjectProperty<DeviceStatus> status =  new SimpleObjectProperty<>(DeviceStatus.NORMAL);
     //private final ObjectProperty<Parameters> parameters = new SimpleObjectProperty<>(new Parameters());
-    private final ObjectProperty<Parameters> normalParameters = new SimpleObjectProperty<>(new Parameters());
-    private final ObjectProperty<Parameters> currentParameters = new SimpleObjectProperty<>(new Parameters());
+    private final ObjectProperty<Parameters> normalParameters;
+    private final ObjectProperty<Parameters> currentParameters;
     private final ObservableList<Threat> threatHistory = FXCollections.observableArrayList();
     private final ObservableMap<String, Number> metrics = FXCollections.observableHashMap();
     private final Map<String, ThresholdConfig> thresholds = new HashMap<>();
@@ -56,13 +52,13 @@ public class Device {
         public String getColor() { return color; }
     }
     
-    private enum DeviceType {
+    public enum DeviceType {
         CPU, MEMORY, DISK, NETWORK, USB, PROCESS;
 
     	public static DeviceType fromDeviceName(String deviceName) {
     		String name = deviceName.toLowerCase();
     		if (name.contains("cpu")) return CPU;
-    		if (name.contains("memory")) return MEMORY;
+    		if (name.contains("memory") || name.contains("ram")) return MEMORY;
     		if (name.contains("disk")) return DISK;
     		if (name.contains("net")||name.contains("wifi")||name.contains("wireless")||name.contains("wan")||name
     				.contains("lan")||name.contains("virtual")) return NETWORK;
@@ -78,6 +74,10 @@ public class Device {
         public ThresholdConfig(double warningLevel, double criticalLevel) {
             this.warningLevel = warningLevel;
             this.criticalLevel = criticalLevel;
+        }       
+        @Override
+        public String toString() {
+            return String.format("ThresholdConfig{warningLevel=%.2f, criticalLevel=%.2f}", warningLevel, criticalLevel);
         }
     }
     
@@ -86,11 +86,14 @@ public class Device {
         this.deviceName.set(deviceName);
         this.ipAddress.set(ipAddress);
         this.threatManager = threatManager;
-        this.status.set(DeviceStatus.OFFLINE);
         
-        initializeThresholds(); // TODO FIX
+        this.normalParameters = new SimpleObjectProperty<>(new Parameters(this));
+        this.currentParameters = new SimpleObjectProperty<>(new Parameters(this));
+        
         setupParameterListeners();
         startCurrentParametersCapture();
+        captureNormalParameters();
+        initializeThresholds();
     }
     
     public String getDeviceId() { return deviceId.get(); }
@@ -114,11 +117,12 @@ public class Device {
     public Parameters getNormalParameters() { return normalParameters.get(); }
     public Parameters getCurrentParameters() { return currentParameters.get(); }
     
+    public ObservableList<Threat> getThreatHistory() { return threatHistory; }
+    public ThreatManager getThreatManager() { return threatManager; }
+    
     private void setupParameterListeners() {
     	Parameters current = currentParameters.get();
-    	
     	DeviceType deviceType = DeviceType.fromDeviceName(deviceName.get());
-
         switch (deviceType) {
             case CPU -> current.cpuUsageProperty().addListener((obs, oldVal, newVal) -> evaluateParameter("cpuUsage", newVal.doubleValue()));
             case MEMORY -> current.memoryUsageProperty().addListener((obs, oldVal, newVal) -> evaluateParameter("memoryUsage", newVal.doubleValue()));
@@ -131,12 +135,7 @@ public class Device {
     
     private void setNormalParameters(Parameters params) {
         Platform.runLater(() -> normalParameters.set(params));
-        initializeThresholds();
-    }
-    
-    private void detectDeviceAndCaptureNormalParameters() {
-        DeviceType deviceType = DeviceType.fromDeviceName(deviceName.get());
-        captureParameters(deviceType);
+        logger.info("Normal parameters set for device: {}", getDeviceName());
     }
     
     private Parameters captureParameters(DeviceType deviceType) {
@@ -156,36 +155,42 @@ public class Device {
             case USB -> params.captureUsbParameters();
             default -> params.captureProcessParameters();
         }
+        //logger.info("Captured parameters for device: {}", params.getParameters());
         return params;
     }
     
     public void captureNormalParameters() {
         DeviceType deviceType = DeviceType.fromDeviceName(deviceName.get());
         executor.submit(() -> 
-        setNormalParameters(captureParameters(deviceType)));      
+        setNormalParameters(captureParameters(deviceType)));  
+        initializeThresholds();
     }
 	
     public void updateCurrentParameters(Parameters params) {
+    	if (params == null || params.getParameters().isEmpty()) {
+            return;
+        }	
     	Platform.runLater(() -> {
-    		currentParameters.set(params);
-    		evaluateAllParameters();
-    		params.evaluateParameters();});  		
+    		synchronized (currentParameters) {
+    			currentParameters.set(params);
+    		}
+    		evaluateAllParameters();});  		
     }
     
     private void startCurrentParametersCapture() {
-        Runnable captureTask = this::captureCurrentParameters;
-        scheduler.scheduleAtFixedRate(captureTask, 0, 500, TimeUnit.MILLISECONDS);
+        scheduler.scheduleAtFixedRate(this::captureCurrentParameters, 0, 500, TimeUnit.MILLISECONDS);
     }
 
     public void captureCurrentParameters() {
         DeviceType deviceType = DeviceType.fromDeviceName(deviceName.get());
         Parameters params = captureParameters(deviceType);
         updateCurrentParameters(params);
-        updateMetrics(params);
     }
     
-    private void updateMetrics(Parameters params) {
+   /* private void updateMetrics(Parameters params) {
+    	Platform.runLater(() -> {
         metrics.clear();
+        logger.debug("Updating Metrics from parameters: {}", params);
         for (Method method : Parameters.class.getDeclaredMethods()) {
             if (method.getName().startsWith("get")) {
                 String metricName = StringUtils.uncapitalize(method.getName().substring(3));
@@ -199,9 +204,10 @@ public class Device {
                     logger.error("Error updating metric " + metricName, e);
                 }
             }
-        }
-        logger.debug("Updated metrics: {}", metrics);
-    }
+        }   	
+        logger.info("Updated metrics: {}", metrics);
+		});
+	}*/
     
     private void initializeThresholds() {
         Parameters normalParams = normalParameters.get();
@@ -210,42 +216,64 @@ public class Device {
 			return;
 		}
 		
-        thresholds.put("cpuUsage", new ThresholdConfig(normalParams.getCpuUsage() * 1.1, normalParams.getCpuUsage() * 1.2));
-        thresholds.put("memoryUsage", new ThresholdConfig(normalParams.getMemoryUsage() * 1.1, normalParams.getMemoryUsage() * 1.2));
-        thresholds.put("networkTraffic", new ThresholdConfig(normalParams.getNetworkTraffic() * 1.1, normalParams.getNetworkTraffic() * 1.2));
-        thresholds.put("diskUsage", new ThresholdConfig(normalParams.getDiskUsage() * 1.1, normalParams.getDiskUsage() * 1.2));
-        thresholds.put("processCount", new ThresholdConfig(normalParams.getProcessCount() * 1.1, normalParams.getProcessCount() * 1.2));
-        logger.debug("Initialized thresholds: {}", thresholds);
+        thresholds.put("cpuUsage", createThresholdConfig(normalParams.getCpuUsage(), "CPU Usage"));
+        thresholds.put("memoryUsage", createThresholdConfig(normalParams.getMemoryUsage(), "Memory Usage"));
+        thresholds.put("networkTraffic", createThresholdConfig(normalParams.getNetworkTraffic(), "Network Traffic"));
+        thresholds.put("diskUsage", createThresholdConfig(normalParams.getDiskUsage(), "Disk Usage"));
+        thresholds.put("processCount", createThresholdConfig(normalParams.getProcessCount(), "Process Count"));
+        logger.info("Initialized thresholds for device '{}': {}", getDeviceName(), thresholds);
+    }
+    
+    private ThresholdConfig createThresholdConfig(double baseValue, String parameterName) {
+        if (baseValue <= 0 || Double.isNaN(baseValue)) {
+            logger.debug("Base value for '{}' is invalid ({}). Using default thresholds.", parameterName, baseValue);
+            return new ThresholdConfig(0, 0); // Default values
+        }
+
+        double warningLevel = baseValue * 3;
+        double criticalLevel = baseValue * 6;
+        return new ThresholdConfig(warningLevel, criticalLevel);
     }
     
     private void evaluateAllParameters() {
     	Parameters current = currentParameters.get();
-    	DeviceStatus overallStatus = DeviceStatus.NORMAL;
+    	boolean hasValidMetrics = false;
+    	
+    	if (current.getParameters().isEmpty()) {
+            setStatus(DeviceStatus.OFFLINE);
+            logger.info("Current parameters are null for device '{}'. Setting status to OFFLINE.", getDeviceName());
+            return;
+        }
     	
     	for (String metric : thresholds.keySet()) {
             double currentValue = getMetricValue(current, metric);
-			evaluateParameter(metric, currentValue);
+            if (currentValue > 0.0) {
+            	hasValidMetrics = true;
+            	evaluateParameter(metric, currentValue);
+            }
     	}
     	
-    	if (overallStatus != status.get()) {
-            setStatus(overallStatus);
-        }
+    	if (!hasValidMetrics) {
+    		setStatus(DeviceStatus.OFFLINE);
+    		return;
+    	}
+    	updateDeviceStatus();
     }
     
     private double getMetricValue(Parameters current, String metric) {
-        switch (metric) {
-            case "cpuUsage" -> { return current.getCpuUsage(); }
-            case "memoryUsage" -> { return current.getMemoryUsage(); }
-            case "diskUsage" -> { return current.getDiskUsage(); }
-            case "networkTraffic" -> { return current.getNetworkTraffic(); }
-            case "usbDeviceCount" -> { return current.getUsbDeviceCount(); }
-            default -> { return 0; }
-        }
+        return switch (metric) {
+            case "cpuUsage" -> current.getCpuUsage();
+            case "memoryUsage" -> current.getMemoryUsage();
+            case "diskUsage" -> current.getDiskUsage();
+            case "networkTraffic" -> current.getNetworkTraffic();
+            case "usbDeviceCount" -> current.getUsbDeviceCount();
+            default -> 0;
+        };
     }
+
     
     private void evaluateParameter(String paramName, double currentValue) {
     	ThresholdConfig threshold = thresholds.get(paramName);
-    	if (threshold == null || currentValue == 0) {this.setStatus(DeviceStatus.OFFLINE); return;}
     	if (currentValue >= threshold.criticalLevel) {
     		generateThreat(paramName, currentValue, Threat.ThreatSeverity.CRITICAL);
     	} else if (currentValue >= threshold.warningLevel) {
@@ -264,6 +292,7 @@ public class Device {
     			paramName, value);
     	threat.setDescription(description);
     	threatManager.addThreat(threat);
+    	logger.info("Generated threat: {}", threat.getId());
     }
     
     private void updateDeviceStatus() {
@@ -316,4 +345,8 @@ public class Device {
     public String getCurrentTime() {
         return LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
     }
+
+	public boolean isOnline() {
+		return this.getStatus() != DeviceStatus.OFFLINE;
+	}
 }

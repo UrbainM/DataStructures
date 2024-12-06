@@ -4,13 +4,11 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.TableView;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.cell.PropertyValueFactory;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.Enumeration;
-import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import oshi.SystemInfo; // https://github.com/openhab/openhab-addons/tree/main/bundles/org.openhab.binding.systeminfo
@@ -22,15 +20,16 @@ class DeviceTableController {
 	private final TableView<Device> deviceTable;
 	private final ThreatManager threatManager;
 	private final HardwareAbstractionLayer hal;
+	private final ObservableList<Device> devices = FXCollections.observableArrayList();
 	
 	public DeviceTableController(TableView<Device> deviceTable) {
 		this.deviceTable = deviceTable;
 		this.threatManager = new ThreatManager();
 		this.hal = new SystemInfo().getHardware();
+		setupDeviceTable();
 	}
 	
 	public void setupDeviceTable() {
-		ObservableList<Device> devices = FXCollections.observableArrayList();
         
 		try { //https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/net/NetworkInterface.html
 			Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
@@ -42,6 +41,9 @@ class DeviceTableController {
 					String ipAddress = getIpAddress(networkInterface);
 					
 					Device device = new Device(deviceId, displayName, ipAddress, threatManager);
+					
+					device.captureNormalParameters();
+					device.captureCurrentParameters();
 					devices.add(device);
 					/*
 	                 if (ipAddress != null && !ipAddress.equals("N/A")) {
@@ -77,8 +79,8 @@ class DeviceTableController {
 	    }
 	}
 	
-	public List<Device> getDevices() {
-		return deviceTable.getItems();
+	public ObservableList<Device> getDevices() {
+		return devices;
 	}
 	
 	public Device getSelectedDevice() {
@@ -86,17 +88,17 @@ class DeviceTableController {
     }
 	
 	private String getCpuDetails() {
-		return hal.getProcessor().getClass().descriptorString();
+		return hal.getProcessor().toString() + " - " + hal.getProcessor().getPhysicalProcessorCount() + " cores";
     }
 	
 	private String getRamDetails() {
 		long availableMemory = hal.getMemory().getAvailable();
-		String memoryName = hal.getMemory().getClass().descriptorString();
+		String memoryName = hal.getMemory().toString() + "ram";
         return availableMemory / (1024 * 1024) + " MB" + " - " + memoryName;
     }
 	
 	private String getDiskDetails() {
-        return hal.getDiskStores().get(0).getName() + " - " + hal.getDiskStores().get(0).getSize() / (1024 * 1024 * 1024) + " GB";
+        return hal.getDiskStores().toString() + " - " + hal.getDiskStores().get(0).getSize() / (1024 * 1024 * 1024) + " GB";
     }
 	
 	private String getIpAddress(NetworkInterface networkInterface) {

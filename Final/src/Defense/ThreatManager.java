@@ -1,5 +1,6 @@
 package Defense;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -49,14 +50,16 @@ public class ThreatManager {
 
     public void addThreat(Threat threat) {
         Platform.runLater(() -> {
+        	threat.timestampProperty().set(timeStamp());
             activeThreatQueue.offer(threat);
             threatHistory.add(threat);
             
-            // Add to device-specific threat list
             deviceThreats.computeIfAbsent(threat.getDeviceId(), k -> new ArrayList<>())
                         .add(threat);
-
-            // Notify listeners
+			for (ThreatListener listener : threatListeners) {
+				listener.onNewThreat(threat);
+			}
+            
             notifyNewThreat(threat);
             
             if (threat.getSeverity() == ThreatSeverity.CRITICAL) {
@@ -66,16 +69,18 @@ public class ThreatManager {
     }
 
     public void resolveThreat(String threatId) {
-        Platform.runLater(() -> {
-            Threat threat = findThreatById(threatId);
-            if (threat != null && threat.isActive()) {
-                threat.setActive(false);
-                activeThreatQueue.remove(threat);
-                notifyThreatResolved(threat);
+        Threat threat = threatHistory.stream()
+                .filter(t -> t.getId().equals(threatId))
+                .findFirst()
+                .orElse(null);
+        if (threat != null) {
+            threat.setActive(false);
+            notifyThreatResolved(threat);
+            for (ThreatListener listener : threatListeners) {
+                listener.onThreatResolved(threat);
             }
-        });
+        }
     }
-
     public Threat getNextHighestThreat() {
         return activeThreatQueue.peek();
     }
@@ -106,12 +111,12 @@ public class ThreatManager {
         threatListeners.forEach(listener -> listener.onCriticalThreat(threat));
     }
 
-    private Threat findThreatById(String threatId) {
+    /* private Threat findThreatById(String threatId) {
         return threatHistory.stream()
                 .filter(t -> t.getId().equals(threatId))
                 .findFirst()
                 .orElse(null);
-    }
+    }*/
 
     // Analysis methods
     public Map<ThreatType, Long> analyzeThreatsByType() {
@@ -135,5 +140,9 @@ public class ThreatManager {
                 .mapToDouble(threat -> 
                     threat.getSeverity().getLevel() * threat.getType().getPriorityWeight())
                 .sum();
+    }
+    
+    private LocalDateTime timeStamp() {
+    	        return LocalDateTime.now();
     }
 }

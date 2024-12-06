@@ -16,8 +16,8 @@ public class ThreatTableController {
 @FXML private TableColumn<Threat, Boolean> isActiveColumn;
 private ThreatManager threatManager;
 
-	public ThreatTableController() {
-	    
+	public ThreatTableController(TableView<Threat> priorityQueueTable) {
+	    this.threatTable = priorityQueueTable;
 		this.threatManager = new ThreatManager();
 	    this.threatManager.addThreatListener(new ThreatManager.ThreatListener() {
 	        @Override

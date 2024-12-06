@@ -32,6 +32,11 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
+<?import java.lang.*?>
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
 <?import javafx.scene.chart.CategoryAxis?>
 <?import javafx.scene.chart.LineChart?>
 <?import javafx.scene.chart.NumberAxis?>
@@ -45,7 +50,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox prefHeight="664.0" prefWidth="1168.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml" fx:controller="Defense.Controller">
+<VBox prefHeight="664.0" prefWidth="1168.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Defense.Controller">
   <children>
       <Label prefWidth="1177.0" text="Infrastructure Monitoring System">
          <font>
@@ -70,7 +75,7 @@
                               <TableColumn fx:id="deviceStatusColumn" prefWidth="75.0" text="Status" />
                               <TableColumn fx:id="deviceIpAddressColumn" prefWidth="75.0" text="IP Address" />
                               <TableColumn fx:id="deviceParametersColumn" prefWidth="72.0" text="Normal" />
-                              <TableColumn fx:id="currentParametersColumn" prefWidth="100.0" text="Current" />
+                              <TableColumn fx:id="currentParametersColumn" prefWidth="150.0" text="Current" />
                           </columns>
                         </TableView>
                         <Label prefWidth="580.0" text="Anomaly Events">
@@ -92,18 +97,24 @@
                               <Font size="18.0" />
                            </font>
                         </Label>
-                        <LineChart fx:id="realTimeChart" xmlns:fx="http://javafx.com/fxml" xmlns="http://javafx.com/javafx/8" title="Real-Time Chart">
+                        <LineChart fx:id="realTimeChart" title="Real-Time Chart" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml">
                           <xAxis>
-                            <CategoryAxis fx:id="timeAxis" autoRanging="false" label="Time" tickLabelGap="0.0" tickLabelsVisible="false" tickLength="1.0">
+                            <CategoryAxis fx:id="timeAxis" label="Time" side="BOTTOM">
                                  <tickLabelFont>
-                                    <Font size="18.0" />
-                                 </tickLabelFont></CategoryAxis>
+                                    <Font size="8.0" />
+                                 </tickLabelFont>
+                            </CategoryAxis>
                           </xAxis>
                           <yAxis>
                             <NumberAxis fx:id="parameterAxis" side="LEFT" />
                           </yAxis>
                         </LineChart>
-                        <Button fx:id="captureParameterButton" mnemonicParsing="false" onAction="#handleStartMonitoring" text="Capture Parameters" />
+                        <HBox>
+                           <children>
+                              <Button fx:id="captureParameterButton" mnemonicParsing="false" onAction="#handleStartMonitoring" text="Capture Parameters" />
+                              <Button fx:id="resetButton" mnemonicParsing="false" onAction="#handleResetSystem" text="Reset" />
+                           </children>
+                        </HBox>
                         <Label prefWidth="580.0" text="Threat Priority Queue">
                            <font>
                               <Font size="18.0" />
@@ -113,8 +124,8 @@
                           <columns>
                             <TableColumn prefWidth="75.0" text="Threat Id" />
                             <TableColumn prefWidth="75.0" text="Device ID" />
-                              <TableColumn prefWidth="75.0" text="Threat Level" />
-                              <TableColumn prefWidth="75.0" text="Timestamp" />
+                            <TableColumn prefWidth="75.0" text="Threat Level" />
+                            <TableColumn prefWidth="75.0" text="Timestamp" />
                           </columns>
                         </TableView>
                      </children>

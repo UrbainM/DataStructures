@@ -28,6 +28,7 @@ public class Threat implements Comparable<Threat> {
         }
 
         public int getPriorityWeight() {
+        	// TODO Return the priority by comparison
             return priorityWeight;
         }
     }
@@ -50,7 +51,6 @@ public class Threat implements Comparable<Threat> {
         }
     }
 
-    // Constructor
     public Threat(String id, String deviceId, ThreatType type, ThreatSeverity severity) {
         this.id.set(id);
         this.deviceId.set(deviceId);
@@ -77,7 +77,6 @@ public class Threat implements Comparable<Threat> {
     public ThreatSeverity getSeverity() { return severity.get(); }
     public boolean isActive() { return isActive.get(); }
 
-    // Setters
     public void setDescription(String value) { description.set(value); }
     public void setActive(boolean value) { isActive.set(value); }
 
