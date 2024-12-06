@@ -16,6 +16,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+//This Controller is responsible for updating the realTimeChart tied to the selected device in the DeviceTableController
 public class ChartController {
 	
 	private static final Logger logger = LoggerFactory.getLogger(ChartController.class);
@@ -31,14 +32,14 @@ public class ChartController {
         initializeTimeAxis();
     }
 
-    private void initializeTimeAxis() {
+    private void initializeTimeAxis() {   // This took me weeks to solve.  TimeSeries aren't inherent to javafx so instead there are 60 categorical x-bins representing seconds.
     	for (int i=0; i < 60; i++) {
     		timeLabels.add(i + "s");
     	}
     	timeAxis.setCategories(FXCollections.observableArrayList(timeLabels));
     }
     
-    public void updateRealTimeChart(Device device) {
+    public void updateRealTimeChart(Device device) {  // This method retrieves all populated parameters contained in a device and graphs them on a chart.  If a device has more than 1 parameter it should have its own line.
         Platform.runLater(() -> {
         	Map<String, Number> metrics = device.getCurrentParameters().getParameters();
         	//logger.info("uRTC Device '{}' parameters: {}", device.getDeviceName(), metrics);
@@ -48,12 +49,12 @@ public class ChartController {
                 return;
             } 
         	
-			if (!device.getDeviceName().equals(currentDeviceName)) {
+			if (!device.getDeviceName().equals(currentDeviceName)) {  // This ensures only 1 device is on the chart at a time
 				realTimeChart.getData().clear();
 				currentDeviceName = device.getDeviceName();
 			}
 			
-			XYChart.Series<String, Number> series = realTimeChart.getData().stream()
+			XYChart.Series<String, Number> series = realTimeChart.getData().stream()  // This is supposed to keep historical charts in reserve, but needs some work.
 	                .filter(s -> device.getDeviceName().equals(s.getName()))
 	                .findFirst()
 	                .orElseGet(() -> {
@@ -63,9 +64,9 @@ public class ChartController {
 	                    return newSeries;
 	                });
 			
-        	metrics.forEach((metricName, value) -> {
+        	metrics.forEach((metricName, value) -> {  
         		if (value != null && value.doubleValue() > 0.0001) {
-        			String currentTime = getCurrentTime();
+        			String currentTime = getCurrentTime();  // Replaces the placeholder "categorical labels" with timestamps.
         			if (timeLabels.size() >= 60) {
                         timeLabels.remove(timeLabels.iterator().next());
                     }
@@ -74,7 +75,7 @@ public class ChartController {
         			series.getData().add(new XYChart.Data<>(currentTime, value));
         			//logger.info("Added data point: {}, {}", currentTime, value);
         			
-					if (series.getData().size() > 60) {
+					if (series.getData().size() > 60) {  // Max 60 datapoints
 						series.getData().remove(0);
 					}
         		}
